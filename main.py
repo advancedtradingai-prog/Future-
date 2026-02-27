@@ -84,7 +84,7 @@ SESSIONS = {
 }
 
 class AdaptiveConfig:
-    min_confidence: float = 68.0  
+    min_confidence: float = 2.0  
     min_adx: float = 22.0
     risk_per_trade: float = 0.0075 
     max_risk: float = 0.01  
