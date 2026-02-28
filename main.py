@@ -1224,30 +1224,84 @@ class SMCAnalyzer:
                 ob = None
                 if current["close"] > current["open"] and momentum > body_size * 0.3:
                     strength = min((body_size / range_size) * 0.5 + 0.3, 1.0) if range_size > 0 else 0.3
-                    ob = {
-                        "high": float(current["high"]),
-                        "low": float(current["low"]),
-                        "type": "bullish",
-                        "strength": strength,
-                        "valid": True,
-                        "fresh": True,
-                        "tested": 0,
-                        "index": i
-                    }
+                    ob = {"type": "bullish", "level": current["low"], "strength": strength}
                 elif current["close"] < current["open"] and momentum > body_size * 0.3:
                     strength = min((body_size / range_size) * 0.5 + 0.3, 1.0) if range_size > 0 else 0.3
-                    ob = {
-                        "high": float(current["high"]),
-                        "low": float(current["low"]),
-                        "type": "bearish",
-                        "strength": strength,
-                        "valid": True,
-                        "fresh": True,
-                        "tested": 0,
-                        "index": i
-                    }
+                    ob = {"type": "bearish", "level": current["high"], "strength": strength}
 
                 if ob:
+                    self.order_blocks.append(ob)
+            except:
+                continue
+
+    def detect_liquidity_sweep(self, df, liquidity_zones):
+        sweeps = []
+        if len(df) < 3:
+            return sweeps
+        last_candle = df.iloc[-1]
+        for zone in liquidity_zones:
+            price = zone["price"]
+            if zone["type"] == "equal_highs":
+                if last_candle["high"] > price and last_candle["close"] < price:
+                    sweeps.append({"type": "bearish_sweep", "level": price, "strength": zone["strength"]})
+            elif zone["type"] == "equal_lows":
+                if last_candle["low"] < price and last_candle["close"] > price:
+                    sweeps.append({"type": "bullish_sweep", "level": price, "strength": zone["strength"]})
+        return sweeps
+
+    def detect_displacement(self, df):
+        if len(df) < 3:
+            return None
+        last = df.iloc[-1]
+        body = abs(last["close"] - last["open"])
+        range_size = last["high"] - last["low"]
+        avg_range = (df["high"] - df["low"]).rolling(20).mean().iloc[-1]
+        if avg_range == 0:
+            return None
+        if body > avg_range * 1.5 and body > range_size * 0.6:
+            return {"direction": "bullish" if last["close"] > last["open"] else "bearish", "strength": body / avg_range}
+        return None
+
+    def detect_bos(self, df, swing_highs, swing_lows):
+        if not swing_highs or not swing_lows:
+            return None
+        last_close = df["close"].iloc[-1]
+        recent_high = max([df.iloc[i]["high"] for i in swing_highs[-5:]])
+        recent_low = min([df.iloc[i]["low"] for i in swing_lows[-5:]])
+        if last_close > recent_high:
+            return "bullish_bos"
+        elif last_close < recent_low:
+            return "bearish_bos"
+        return None
+
+def analyze(df_5m, smc, swing_highs, swing_lows):
+    smc_score = 0
+    factors = []
+    liquidity_sweeps = smc.detect_liquidity_sweep(df_5m, smc.liquidity_zones)
+    displacement = smc.detect_displacement(df_5m)
+    bos = smc.detect_bos(df_5m, swing_highs, swing_lows)
+    for sweep in liquidity_sweeps:
+        if sweep["type"] == "bullish_sweep":
+            smc_score += 20
+            factors.append(f"Liquidity sweep @ {sweep['level']:.2f}")
+            if displacement and displacement["direction"] == "bullish":
+                smc_score += 15
+                factors.append("Bullish displacement")
+            if bos == "bullish_bos":
+                smc_score += 15
+                factors.append("Bullish BOS confirmed")
+        elif sweep["type"] == "bearish_sweep":
+            smc_score += 20
+            factors.append(f"Liquidity sweep @ {sweep['level']:.2f}")
+            if displacement and displacement["direction"] == "bearish":
+                smc_score += 15
+                factors.append("Bearish displacement")
+            if bos == "bearish_bos":
+                smc_score += 15
+                factors.append("Bearish BOS confirmed")
+    return smc_score, factors
+                
+               if ob:
                     self.order_blocks.append(ob)
 
             except Exception as e:
