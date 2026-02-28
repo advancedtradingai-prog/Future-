@@ -1296,28 +1296,26 @@ def analyze(df_5m, smc, swing_highs, swing_lows):
             if displacement and displacement["direction"] == "bearish":
                 smc_score += 15
                 factors.append("Bearish displacement")
-            if bos == "bearish_bos":
-                smc_score += 15
-                factors.append("Bearish BOS confirmed")
-    return smc_score, factors
-                
-               if ob:
-                    self.order_blocks.append(ob)
+            
+             if bos == "bearish_bos":
+    smc_score += 15
+    factors.append("Bearish BOS confirmed")
+return smc_score, factors
 
-            except Exception as e:
-                continue
+try:
+    if ob:
+        self.order_blocks.append(ob)
+except Exception as e:
+    continue
 
-    def update_ob_validity(self, current_price):
-        for ob in self.order_blocks:
-            if ob["type"] == "bullish":
-                if current_price < ob["low"]:
-                    ob["valid"] = False
-                elif current_price > ob["high"]:
-                    ob["tested"] += 1
-            else:
-                if current_price > ob["high"]:
-                    ob["valid"] = False
-                elif current_price < ob["low"]:
+def update_ob_validity(self, current_price):
+    for ob in self.order_blocks:
+        if ob["type"] == "bullish":
+            if current_price < ob["low"]:
+                ob["valid"] = False
+        elif ob["type"] == "bearish":
+            if current_price > ob["high"]:
+                ob["valid"] = False   elif current_price < ob["low"]:
                     ob["tested"] += 1
 
             if ob["tested"] >= 3:
