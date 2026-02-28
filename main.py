@@ -1296,8 +1296,7 @@ def analyze(df_5m, smc, swing_highs, swing_lows):
             if displacement and displacement["direction"] == "bearish":
                 smc_score += 15
                 factors.append("Bearish displacement")
-            
-             if bos == "bearish_bos":
+            if bos == "bearish_bos":
     smc_score += 15
     factors.append("Bearish BOS confirmed")
 return smc_score, factors
